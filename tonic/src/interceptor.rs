@@ -1,5 +1,6 @@
 use crate::{Request, Status};
 use std::{fmt, sync::Arc};
+use std::panic::AssertUnwindSafe;
 
 /// Represents a gRPC interceptor.
 ///
@@ -16,7 +17,7 @@ use std::{fmt, sync::Arc};
 /// features to the body of the request, going through the `tower` abstraction is recommended.
 #[derive(Clone)]
 pub struct Interceptor {
-    f: Arc<dyn Fn(Request<()>) -> Result<Request<()>, Status> + Send + Sync + 'static>,
+    f: Arc<AssertUnwindSafe<Box<dyn Fn(Request<()>) -> Result<Request<()>, Status> + Send + Sync + 'static>>>,
 }
 
 impl Interceptor {
@@ -24,7 +25,7 @@ impl Interceptor {
     pub fn new(
         f: impl Fn(Request<()>) -> Result<Request<()>, Status> + Send + Sync + 'static,
     ) -> Self {
-        Interceptor { f: Arc::new(f) }
+        Interceptor { f: Arc::new(AssertUnwindSafe(Box::new(f))) }
     }
 
     pub(crate) fn call<T>(&self, req: Request<T>) -> Result<Request<T>, Status> {
